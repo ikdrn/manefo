@@ -1,12 +1,12 @@
-import { NextResponse } from "next/server";
-import { withAuth, apiError } from "@/lib/auth";
+import { NextRequest, NextResponse } from "next/server";
+import { getSessionUser, unauthorized, apiError } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 
-// GET /api/reports/monthly
-// 月次収支（全期間・無制限 — 差別化ポイント）
-export const GET = withAuth(async (_req, user) => {
-  const db = createAdminClient();
+export async function GET(req: NextRequest) {
+  const user = await getSessionUser(req);
+  if (!user) return unauthorized();
 
+  const db = createAdminClient();
   const { data, error } = await db
     .from("transactions")
     .select("transaction_type, amount, transacted_at")
@@ -16,11 +16,10 @@ export const GET = withAuth(async (_req, user) => {
 
   if (error) return apiError(error.message);
 
-  // 月ごとに集計
   const monthly = new Map<string, { income: number; expense: number; count: number }>();
 
   for (const t of data) {
-    const month = t.transacted_at.slice(0, 7); // YYYY-MM
+    const month = (t.transacted_at as string).slice(0, 7);
     const entry = monthly.get(month) ?? { income: 0, expense: 0, count: 0 };
     const amt = Math.abs(Number(t.amount));
     if (t.transaction_type === "income") entry.income += amt;
@@ -38,4 +37,4 @@ export const GET = withAuth(async (_req, user) => {
   }));
 
   return NextResponse.json({ data: result });
-});
+}

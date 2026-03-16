@@ -1,9 +1,15 @@
-import { NextResponse } from "next/server";
-import { withAuth, apiError } from "@/lib/auth";
+import { NextRequest, NextResponse } from "next/server";
+import { getSessionUser, unauthorized, apiError } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 
-// PATCH /api/transactions/:id
-export const PATCH = withAuth(async (req, user, params) => {
+export async function PATCH(
+  req: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const user = await getSessionUser(req);
+  if (!user) return unauthorized();
+
+  const { id } = await params;
   const body = await req.json();
   const db = createAdminClient();
 
@@ -17,25 +23,34 @@ export const PATCH = withAuth(async (req, user, params) => {
   const { data, error } = await db
     .from("transactions")
     .update(updates)
-    .eq("id", params!.id)
+    .eq("id", id)
     .eq("user_id", user.id)
     .select()
     .single();
 
   if (error) return apiError("Transaction not found", 404);
   return NextResponse.json(data);
-});
+}
 
-// DELETE /api/transactions/:id  (手動取引のみ削除可)
-export const DELETE = withAuth(async (_req, user, params) => {
+export async function DELETE(
+  req: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const user = await getSessionUser(req);
+  if (!user) return unauthorized();
+
+  const { id } = await params;
   const db = createAdminClient();
+
   const { error, count } = await db
     .from("transactions")
     .delete({ count: "exact" })
-    .eq("id", params!.id)
+    .eq("id", id)
     .eq("user_id", user.id)
     .eq("is_manual", true);
 
-  if (error || count === 0) return apiError("Transaction not found or cannot delete auto-imported transactions", 404);
+  if (error || count === 0) {
+    return apiError("Transaction not found or cannot delete auto-imported transactions", 404);
+  }
   return new NextResponse(null, { status: 204 });
-});
+}

@@ -6,60 +6,40 @@ export interface AuthUser {
   email?: string;
 }
 
-type ApiHandler = (
-  req: NextRequest,
-  user: AuthUser,
-  params?: Record<string, string>
-) => Promise<NextResponse>;
-
 /**
- * APIルートの認証ラッパー
- * Supabase Authで認証済みユーザーのみ通過させる
+ * リクエストのSupabaseセッションを検証し、認証済みユーザーを返す。
+ * 未認証の場合は null を返す。
+ *
+ * Next.js 15 Route Handler で直接呼び出す形式（HOCではない）。
+ * 各ルートで以下のように使う:
+ *
+ *   const user = await getSessionUser(req);
+ *   if (!user) return unauthorized();
  */
-export function withAuth(handler: ApiHandler) {
-  return async (
-    req: NextRequest,
-    context?: { params?: Promise<Record<string, string>> }
-  ): Promise<NextResponse> => {
-    const params = context?.params ? await context.params : {};
-
-    // Supabase SSRクライアントでセッション確認
-    const supabase = createServerClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      {
-        cookies: {
-          getAll: () => {
-            return req.cookies
-              .getAll()
-              .map(({ name, value }) => ({ name, value }));
-          },
-          setAll: () => {},
-        },
-      }
-    );
-
-    const {
-      data: { user },
-      error,
-    } = await supabase.auth.getUser();
-
-    if (error || !user) {
-      return NextResponse.json(
-        { error: "Unauthorized" },
-        { status: 401 }
-      );
+export async function getSessionUser(req: NextRequest): Promise<AuthUser | null> {
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        getAll: () =>
+          req.cookies.getAll().map(({ name, value }) => ({ name, value })),
+        setAll: () => {},
+      },
     }
+  );
 
-    return handler(req, { id: user.id, email: user.email }, params);
-  };
+  const {
+    data: { user },
+    error,
+  } = await supabase.auth.getUser();
+
+  if (error || !user) return null;
+  return { id: user.id, email: user.email ?? undefined };
 }
 
-/**
- * APIエラーレスポンスのヘルパー
- */
-export const apiError = (
-  message: string,
-  status = 500
-): NextResponse =>
+export const unauthorized = () =>
+  NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+export const apiError = (message: string, status = 500) =>
   NextResponse.json({ error: message }, { status });

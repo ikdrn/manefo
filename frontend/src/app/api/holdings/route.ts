@@ -1,11 +1,12 @@
-import { NextResponse } from "next/server";
-import { withAuth, apiError } from "@/lib/auth";
+import { NextRequest, NextResponse } from "next/server";
+import { getSessionUser, unauthorized, apiError } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 
-// GET /api/holdings
-export const GET = withAuth(async (_req, user) => {
-  const db = createAdminClient();
+export async function GET(req: NextRequest) {
+  const user = await getSessionUser(req);
+  if (!user) return unauthorized();
 
+  const db = createAdminClient();
   const { data, error } = await db
     .from("investment_holdings")
     .select("*, accounts (name)")
@@ -14,4 +15,4 @@ export const GET = withAuth(async (_req, user) => {
 
   if (error) return apiError(error.message);
   return NextResponse.json(data);
-});
+}

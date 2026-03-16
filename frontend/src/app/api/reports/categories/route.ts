@@ -1,9 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
-import { withAuth, apiError } from "@/lib/auth";
+import { getSessionUser, unauthorized, apiError } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 
-// GET /api/reports/categories?year=2025&month=3
-export const GET = withAuth(async (req: NextRequest, user) => {
+export async function GET(req: NextRequest) {
+  const user = await getSessionUser(req);
+  if (!user) return unauthorized();
+
   const { searchParams } = new URL(req.url);
   const now = new Date();
   const year = Number(searchParams.get("year") ?? now.getFullYear());
@@ -13,14 +15,9 @@ export const GET = withAuth(async (req: NextRequest, user) => {
   const nextMonth = new Date(year, month, 1).toISOString().slice(0, 10);
 
   const db = createAdminClient();
-
   const { data, error } = await db
     .from("transactions")
-    .select(`
-      transaction_type,
-      amount,
-      categories (id, name, icon, color)
-    `)
+    .select(`transaction_type, amount, categories (id, name, icon, color)`)
     .eq("user_id", user.id)
     .eq("is_transfer", false)
     .gte("transacted_at", monthStart)
@@ -28,7 +25,6 @@ export const GET = withAuth(async (req: NextRequest, user) => {
 
   if (error) return apiError(error.message);
 
-  // カテゴリ・type でグループ化
   const grouped = new Map<string, {
     category_id: string | null;
     category_name: string;
@@ -62,13 +58,18 @@ export const GET = withAuth(async (req: NextRequest, user) => {
     .reduce((s, r) => s + r.total, 0);
 
   const result = rows.map((r) => ({
-    ...r,
+    category_id: r.category_id,
+    category_name: r.category_name,
+    category_icon: r.category_icon,
+    category_color: r.category_color,
+    transaction_type: r.transaction_type,
     total_amount: r.total,
     transaction_count: r.count,
-    percentage: r.transaction_type === "expense" && totalExpense > 0
-      ? (r.total / totalExpense) * 100
-      : null,
+    percentage:
+      r.transaction_type === "expense" && totalExpense > 0
+        ? (r.total / totalExpense) * 100
+        : null,
   }));
 
   return NextResponse.json({ year, month, total_expense: totalExpense, data: result });
-});
+}

@@ -1,9 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
-import { withAuth, apiError } from "@/lib/auth";
+import { getSessionUser, unauthorized, apiError } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 
-// GET /api/transactions
-export const GET = withAuth(async (req, user) => {
+export async function GET(req: NextRequest) {
+  const user = await getSessionUser(req);
+  if (!user) return unauthorized();
+
   const { searchParams } = new URL(req.url);
   const page = Math.max(1, Number(searchParams.get("page") ?? 1));
   const perPage = Math.min(200, Number(searchParams.get("per_page") ?? 50));
@@ -17,11 +19,7 @@ export const GET = withAuth(async (req, user) => {
   const db = createAdminClient();
   let query = db
     .from("transactions")
-    .select(`
-      *,
-      categories (name, icon, color),
-      accounts (name)
-    `, { count: "exact" })
+    .select(`*, categories (name, icon, color), accounts (name)`, { count: "exact" })
     .eq("user_id", user.id)
     .order("transacted_at", { ascending: false })
     .range((page - 1) * perPage, page * perPage - 1);
@@ -43,14 +41,15 @@ export const GET = withAuth(async (req, user) => {
     per_page: perPage,
     total_pages: Math.ceil((count ?? 0) / perPage),
   });
-});
+}
 
-// POST /api/transactions
-export const POST = withAuth(async (req, user) => {
+export async function POST(req: NextRequest) {
+  const user = await getSessionUser(req);
+  if (!user) return unauthorized();
+
   const body = await req.json();
   const db = createAdminClient();
 
-  // 口座の所有確認
   const { data: acc } = await db
     .from("accounts")
     .select("id")
@@ -79,4 +78,4 @@ export const POST = withAuth(async (req, user) => {
 
   if (error) return apiError(error.message);
   return NextResponse.json(data, { status: 201 });
-});
+}

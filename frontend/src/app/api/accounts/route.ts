@@ -1,31 +1,30 @@
 import { NextRequest, NextResponse } from "next/server";
-import { withAuth, apiError } from "@/lib/auth";
+import { getSessionUser, unauthorized, apiError } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 
-// GET /api/accounts
-export const GET = withAuth(async (_req, user) => {
-  const db = createAdminClient();
+export async function GET(req: NextRequest) {
+  const user = await getSessionUser(req);
+  if (!user) return unauthorized();
 
+  const db = createAdminClient();
   const { data, error } = await db
     .from("accounts")
-    .select(`
-      *,
-      financial_institutions (name, logo_url, category)
-    `)
+    .select(`*, financial_institutions (name, logo_url, category)`)
     .eq("user_id", user.id)
     .eq("is_hidden", false)
     .order("display_order", { ascending: true });
 
   if (error) return apiError(error.message);
-
   return NextResponse.json(data);
-});
+}
 
-// POST /api/accounts
-export const POST = withAuth(async (req, user) => {
+export async function POST(req: NextRequest) {
+  const user = await getSessionUser(req);
+  if (!user) return unauthorized();
+
   const body = await req.json();
-
   const db = createAdminClient();
+
   const { data, error } = await db
     .from("accounts")
     .insert({
@@ -45,6 +44,5 @@ export const POST = withAuth(async (req, user) => {
     .single();
 
   if (error) return apiError(error.message);
-
   return NextResponse.json(data, { status: 201 });
-});
+}

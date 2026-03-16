@@ -1,10 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
-import { withAuth, apiError } from "@/lib/auth";
+import { getSessionUser, unauthorized, apiError } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 
-// GET /api/reports/yearly?year=2025
-export const GET = withAuth(async (req: NextRequest, user) => {
-  const year = Number(new URL(req.url).searchParams.get("year") ?? new Date().getFullYear());
+export async function GET(req: NextRequest) {
+  const user = await getSessionUser(req);
+  if (!user) return unauthorized();
+
+  const year = Number(
+    new URL(req.url).searchParams.get("year") ?? new Date().getFullYear()
+  );
 
   const db = createAdminClient();
   const { data, error } = await db
@@ -31,4 +35,4 @@ export const GET = withAuth(async (req: NextRequest, user) => {
     net: totalIncome - totalExpense,
     transaction_count: data.length,
   });
-});
+}
