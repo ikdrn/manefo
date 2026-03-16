@@ -398,6 +398,21 @@ BEGIN
   ON CONFLICT (user_id, category_id, budget_month) DO NOTHING;
 
   -- -------------------------------------------------------------------------
+  -- 定期取引テンプレート
+  -- -------------------------------------------------------------------------
+  INSERT INTO recurring_transactions (user_id, account_id, category_id, name, amount, transaction_type, frequency, next_date, is_active)
+  VALUES
+  (v_user1, v_acc_mizuho,  v_cat_housing,      '家賃 引落',                   120000, 'expense', 'monthly', DATE_TRUNC('month', NOW() + INTERVAL '1 month')::DATE, TRUE),
+  (v_user1, v_acc_credit,  v_cat_subscription, 'Netflix',                      1490, 'expense', 'monthly', DATE_TRUNC('month', NOW() + INTERVAL '1 month')::DATE, TRUE),
+  (v_user1, v_acc_credit,  v_cat_subscription, 'Spotify プレミアム',            980, 'expense', 'monthly', DATE_TRUNC('month', NOW() + INTERVAL '1 month')::DATE, TRUE),
+  (v_user1, v_acc_credit,  v_cat_subscription, 'Amazon プライム',               600, 'expense', 'monthly', DATE_TRUNC('month', NOW() + INTERVAL '1 month')::DATE, TRUE),
+  (v_user1, v_acc_credit,  v_cat_subscription, 'ChatGPT Plus',                 3000, 'expense', 'monthly', DATE_TRUNC('month', NOW() + INTERVAL '1 month')::DATE, TRUE),
+  (v_user1, v_acc_credit,  v_cat_subscription, 'iCloud+',                       130, 'expense', 'monthly', DATE_TRUNC('month', NOW() + INTERVAL '1 month')::DATE, TRUE),
+  (v_user1, v_acc_mizuho,  v_cat_utility,      '東京電力 電気料金',             8000, 'expense', 'monthly', DATE_TRUNC('month', NOW() + INTERVAL '1 month')::DATE, TRUE),
+  (v_user1, v_acc_mizuho,  v_cat_utility,      '東京ガス',                      5000, 'expense', 'monthly', DATE_TRUNC('month', NOW() + INTERVAL '1 month')::DATE, TRUE),
+  (v_user1, v_acc_mizuho,  v_cat_salary,       '給与振込',                    450000, 'income',  'monthly', DATE_TRUNC('month', NOW() + INTERVAL '1 month')::DATE, TRUE);
+
+  -- -------------------------------------------------------------------------
   -- 通知サンプル
   -- -------------------------------------------------------------------------
   INSERT INTO notifications (user_id, title, body, type, metadata)
