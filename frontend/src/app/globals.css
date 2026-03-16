@@ -1,0 +1,117 @@
+@import "tailwindcss";
+
+/* =============================================================================
+   manefo Design System
+   色役割の厳格ルール（1色 = 1意味）
+   ============================================================================= */
+
+@theme {
+  /* メイン（CTA・ヘッダー） */
+  --color-primary: #0F62FE;
+  --color-primary-hover: #0353E9;
+  --color-primary-light: #D0E2FF;
+
+  /* 増加・プラス */
+  --color-positive: #16A34A;
+  --color-positive-light: #DCFCE7;
+
+  /* 減少・マイナス */
+  --color-negative: #DC2626;
+  --color-negative-light: #FEE2E2;
+
+  /* 注意・警告 */
+  --color-warning: #D97706;
+  --color-warning-light: #FEF3C7;
+
+  /* 負債 */
+  --color-liability: #6B7280;
+  --color-liability-light: #F3F4F6;
+
+  /* 背景（ライト） */
+  --color-bg-light: #F9FAFB;
+  --color-bg-white: #FFFFFF;
+
+  /* 背景（ダーク） */
+  --color-bg-dark: #111827;
+  --color-bg-dark-card: #1F2937;
+  --color-bg-dark-border: #374151;
+
+  /* テキスト */
+  --color-text-primary: #111827;
+  --color-text-secondary: #4B5563;
+  --color-text-muted: #9CA3AF;
+  --color-text-missing: #D1D5DB;  /* 欠損値「—」用 */
+
+  /* ボーダー */
+  --color-border: #E5E7EB;
+  --color-border-dark: #374151;
+
+  /* フォント */
+  --font-sans: "Inter", "Noto Sans JP", system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", "Courier New", monospace;
+
+  /* 数値表示用（tabular-nums） */
+  --font-numeric: "Inter", "Noto Sans JP", system-ui, sans-serif;
+}
+
+/* ベース設定 */
+html {
+  font-feature-settings: "kern" 1, "liga" 1;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* 数値は等幅で表示（金額がブレない） */
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum" 1;
+}
+
+/* ダークモード */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --color-bg-light: #111827;
+    --color-bg-white: #1F2937;
+    --color-text-primary: #F9FAFB;
+    --color-text-secondary: #D1D5DB;
+    --color-border: #374151;
+  }
+}
+
+/* スクロールバー（極細） */
+::-webkit-scrollbar {
+  width: 4px;
+  height: 4px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #D1D5DB;
+  border-radius: 2px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #9CA3AF;
+}
+
+/* グリッド線・区切り線は極薄 */
+.divider {
+  border-color: #F3F4F6;
+}
+.dark .divider {
+  border-color: #374151;
+}
+
+/* ローディングアニメーション（最小限） */
+@keyframes pulse-subtle {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.6; }
+}
+.skeleton {
+  animation: pulse-subtle 1.5s ease-in-out infinite;
+  background: #F3F4F6;
+  border-radius: 4px;
+}
+.dark .skeleton {
+  background: #374151;
+}
