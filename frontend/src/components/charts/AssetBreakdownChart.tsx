@@ -30,6 +30,35 @@ const COLORS = [
 
 const LIABILITY_COLORS = ["#6B7280", "#9CA3AF", "#4B5563"];
 
+function TreemapCell(props: any) {
+  const { x, y, width, height, name, value, index } = props;
+  if (width < 30 || height < 20) return null;
+  return (
+    <g>
+      <rect
+        x={x + 1}
+        y={y + 1}
+        width={width - 2}
+        height={height - 2}
+        fill={COLORS[index % COLORS.length]}
+        rx={3}
+      />
+      {width > 60 && height > 30 && (
+        <>
+          <text x={x + 6} y={y + 14} fontSize={11} fill="white" fontWeight={500}>
+            {name.length > 8 ? name.slice(0, 7) + "…" : name}
+          </text>
+          {height > 44 && (
+            <text x={x + 6} y={y + 28} fontSize={10} fill="rgba(255,255,255,0.8)">
+              {formatCurrency(value, { compact: true })}
+            </text>
+          )}
+        </>
+      )}
+    </g>
+  );
+}
+
 function DonutChart({ data, loading }: { data: BreakdownItem[]; loading?: boolean }) {
   if (loading) {
     return <div className="skeleton w-40 h-40 rounded-full mx-auto" />;
@@ -122,39 +151,7 @@ export default function AssetBreakdownChart({
                 data={assets}
                 dataKey="value"
                 aspectRatio={4 / 3}
-                content={({ x, y, width, height, name, value, index }: any) => {
-                  if (width < 30 || height < 20) return null;
-                  return (
-                    <g>
-                      <rect
-                        x={x + 1}
-                        y={y + 1}
-                        width={width - 2}
-                        height={height - 2}
-                        fill={COLORS[index % COLORS.length]}
-                        rx={3}
-                      />
-                      {width > 60 && height > 30 && (
-                        <>
-                          <text
-                            x={x + 6}
-                            y={y + 14}
-                            fontSize={11}
-                            fill="white"
-                            fontWeight={500}
-                          >
-                            {name.length > 8 ? name.slice(0, 7) + "…" : name}
-                          </text>
-                          {height > 44 && (
-                            <text x={x + 6} y={y + 28} fontSize={10} fill="rgba(255,255,255,0.8)">
-                              {formatCurrency(value, { compact: true })}
-                            </text>
-                          )}
-                        </>
-                      )}
-                    </g>
-                  );
-                }}
+                content={<TreemapCell />}
               />
             </ResponsiveContainer>
           )}
