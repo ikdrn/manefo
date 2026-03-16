@@ -9,10 +9,11 @@ import {
   BarChart3,
   Settings,
   PlusCircle,
+  type LucideIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils/format";
 
-const navItems = [
+const navItems: { href: string; icon: LucideIcon; label: string }[] = [
   { href: "/", icon: LayoutDashboard, label: "ダッシュボード" },
   { href: "/accounts", icon: CreditCard, label: "口座一覧" },
   { href: "/transactions", icon: ReceiptText, label: "取引明細" },

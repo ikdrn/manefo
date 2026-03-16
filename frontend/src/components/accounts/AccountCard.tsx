@@ -10,6 +10,7 @@ import {
   AlertCircle,
   RefreshCw,
   ChevronRight,
+  type LucideIcon,
 } from "lucide-react";
 import Link from "next/link";
 
@@ -19,7 +20,7 @@ interface AccountCardProps {
   onSync?: (accountId: string) => void;
 }
 
-const ACCOUNT_ICONS: Record<string, React.ComponentType<{ size?: number; className?: string }>> = {
+const ACCOUNT_ICONS: Record<string, LucideIcon> = {
   checking: Building2,
   savings: Building2,
   credit_card: CreditCard,
