@@ -17,15 +17,40 @@
 ## 技術スタック
 
 ```
-Frontend  : TypeScript + React (Next.js 15 App Router) → Vercel
-Backend   : Rust (Axum) → Fly.io
-Database  : Supabase (PostgreSQL 15)
-Auth      : Supabase Auth (Email/Password + Google OAuth)
-Storage   : Supabase Storage
-Secrets   : Supabase Vault / AES-256-GCM
-Charts    : Recharts
-Icons     : Lucide React
-Styling   : Tailwind CSS v4
+Frontend + API  : TypeScript + React (Next.js 15 App Router)
+                  → Vercel（フロントエンド・APIルート一括デプロイ）
+Database        : Supabase (PostgreSQL 15)
+Auth            : Supabase Auth (Email/Password + Google OAuth)
+Storage         : Supabase Storage
+暗号化          : Node.js AES-256-GCM (crypto モジュール)
+Charts          : Recharts
+Icons           : Lucide React
+Styling         : Tailwind CSS v4
+```
+
+> **Vercel完結**: フロントエンドとAPIは同じNext.jsプロジェクト内。
+> `frontend/src/app/api/` 以下が全バックエンドロジックを担う。
+> 別サーバーは一切不要。
+
+## アーキテクチャ概要
+
+```
+Vercel（Next.js 15）
+├── app/                   # フロントエンド（React Server Components）
+│   ├── (auth)/            # 認証ページ
+│   └── (dashboard)/       # ダッシュボード・口座・取引・レポート
+└── app/api/               # バックエンドAPI（Serverless Functions）
+    ├── accounts/          # 口座 CRUD + 同期
+    ├── transactions/      # 取引 CRUD
+    ├── assets/            # 資産サマリー・推移履歴
+    ├── holdings/          # 保有銘柄
+    ├── reports/           # 月次・年次・カテゴリレポート
+    └── providers/         # 対応金融機関一覧
+
+Supabase
+├── PostgreSQL             # データストア（RLS適用）
+├── Auth                   # ユーザー認証（JWT）
+└── Storage                # アバター等のファイル
 ```
 
 ## ディレクトリ構成
@@ -37,51 +62,30 @@ manefo/
 ├── db/
 │   ├── schema.sql          # 全テーブル定義・RLS・インデックス
 │   └── seed.sql            # テストデータ挿入
-├── frontend/               # Next.js 15 App Router
-│   ├── src/
-│   │   ├── app/
-│   │   │   ├── (auth)/
-│   │   │   │   ├── login/
-│   │   │   │   └── register/
-│   │   │   ├── (dashboard)/
-│   │   │   │   ├── page.tsx         # ホーム（資産サマリー）
-│   │   │   │   ├── accounts/        # 口座一覧
-│   │   │   │   ├── transactions/    # 取引明細
-│   │   │   │   └── reports/         # 収支レポート
-│   │   │   ├── layout.tsx
-│   │   │   └── globals.css
-│   │   ├── components/
-│   │   │   ├── ui/                  # 汎用UIコンポーネント
-│   │   │   ├── charts/              # グラフ系コンポーネント
-│   │   │   ├── accounts/            # 口座関連
-│   │   │   └── layout/              # ヘッダー・サイドバー等
-│   │   ├── lib/
-│   │   │   ├── supabase/            # Supabaseクライアント
-│   │   │   └── utils/
-│   │   └── types/                   # 共有型定義
-│   ├── package.json
-│   ├── tsconfig.json
-│   └── next.config.ts
-└── backend/                # Rust / Axum
-    ├── src/
-    │   ├── main.rs
-    │   ├── routes/
-    │   │   ├── accounts.rs
-    │   │   ├── transactions.rs
-    │   │   ├── assets.rs
-    │   │   └── providers.rs
-    │   ├── models/
-    │   ├── providers/               # AccountProvider trait + 実装
-    │   │   ├── mod.rs               # trait定義
-    │   │   ├── mizuho.rs
-    │   │   ├── mufg.rs
-    │   │   ├── smbc.rs
-    │   │   ├── rakuten.rs
-    │   │   └── sbi.rs
-    │   ├── services/
-    │   └── middleware/
-    ├── Cargo.toml
-    └── fly.toml
+├── supabase/               # Supabase CLIローカル設定
+└── frontend/               # Next.js 15（フロント + API一体）
+    └── src/
+        ├── app/
+        │   ├── (auth)/         # login / register
+        │   ├── (dashboard)/    # ホーム・口座・取引・レポート
+        │   ├── api/            # APIルートハンドラー（バックエンド）
+        │   │   ├── accounts/
+        │   │   ├── transactions/
+        │   │   ├── assets/
+        │   │   ├── holdings/
+        │   │   ├── reports/
+        │   │   └── providers/
+        │   └── auth/callback/  # OAuth コールバック
+        ├── components/
+        │   ├── charts/         # AssetHistoryChart / AssetBreakdownChart
+        │   ├── accounts/       # AccountCard
+        │   └── layout/         # Header / Sidebar
+        ├── lib/
+        │   ├── supabase/       # client.ts / server.ts / admin.ts
+        │   ├── providers/      # AccountProvider interface + 各行実装
+        │   ├── auth.ts         # withAuth ミドルウェア
+        │   └── crypto.ts       # AES-256-GCM 暗号化
+        └── types/              # 共有型定義
 ```
 
 ## ローカル開発手順
@@ -89,8 +93,7 @@ manefo/
 ### 前提条件
 
 - Node.js 22+
-- Rust 1.80+（`rustup` 推奨）
-- Supabase CLI（`brew install supabase/tap/supabase` または npm）
+- Supabase CLI（`npm install -g supabase` または Homebrew）
 - Docker（Supabaseローカル起動に必要）
 
 ### 1. リポジトリのクローン
@@ -103,17 +106,14 @@ cd manefo
 ### 2. Supabase ローカルセットアップ
 
 ```bash
-# Supabase CLIの初期化（初回のみ）
-supabase init
+supabase init       # 初回のみ（supabase/config.toml が既にあるのでスキップ可）
+supabase start      # Docker でローカルSupabaseを起動
 
-# ローカルSupabaseを起動（Docker必須）
-supabase start
-
-# マイグレーション実行
-supabase db reset   # schema.sql + seed.sql を適用
+# スキーマ + テストデータを適用
+supabase db reset
 ```
 
-起動後、以下が使えるようになります：
+起動後:
 - API URL: `http://localhost:54321`
 - Studio: `http://localhost:54323`
 - DB: `postgresql://postgres:postgres@localhost:54322/postgres`
@@ -121,16 +121,11 @@ supabase db reset   # schema.sql + seed.sql を適用
 ### 3. 環境変数の設定
 
 ```bash
-# frontend
 cp .env.example frontend/.env.local
-
-# backend
-cp .env.example backend/.env
+# .env.local を編集してローカルSupabase URLを設定
 ```
 
-`.env.local` / `.env` を編集してローカルSupabase URLを設定。
-
-### 4. フロントエンド起動
+### 4. 起動
 
 ```bash
 cd frontend
@@ -139,83 +134,60 @@ npm run dev
 # → http://localhost:3000
 ```
 
-### 5. バックエンド起動
+---
 
-```bash
-cd backend
-cargo run
-# → http://localhost:8080
-```
+## Vercel デプロイ手順
 
-## Vercel デプロイ手順（Frontend）
-
-### 1. Vercelにプロジェクト作成
+### 1. Vercel プロジェクト作成
 
 ```bash
 cd frontend
 npx vercel
+# Root Directory: frontend（またはVercelダッシュボードで設定）
 ```
 
 ### 2. 環境変数を Vercel ダッシュボードに設定
 
-| 変数名 | 説明 |
-|---|---|
-| `NEXT_PUBLIC_SUPABASE_URL` | Supabase プロジェクト URL |
-| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase anon/public キー |
-| `NEXT_PUBLIC_API_URL` | Rust バックエンドの URL（Fly.io） |
-| `SUPABASE_SERVICE_ROLE_KEY` | Supabase service role キー（サーバーサイドのみ） |
+| 変数名 | 説明 | 例 |
+|---|---|---|
+| `NEXT_PUBLIC_SUPABASE_URL` | Supabase プロジェクト URL | `https://xxxx.supabase.co` |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase anon キー | `eyJ...` |
+| `SUPABASE_SERVICE_ROLE_KEY` | Service role キー（APIルート専用・非公開） | `eyJ...` |
+| `ENCRYPTION_KEY` | 口座認証情報の暗号化キー（64文字hex） | `openssl rand -hex 32` で生成 |
 
-### 3. デプロイ
+> **注意**: `SUPABASE_SERVICE_ROLE_KEY` と `ENCRYPTION_KEY` は
+> `NEXT_PUBLIC_` プレフィックスなし → クライアントに公開されない。
 
-```bash
-git push origin main  # GitHubと連携済みならプッシュでCD発火
-```
+### 3. Supabase プロダクション設定
 
-## Fly.io デプロイ手順（Backend）
-
-### 1. Fly CLI インストール
-
-```bash
-curl -L https://fly.io/install.sh | sh
-fly auth login
-```
-
-### 2. アプリ作成
-
-```bash
-cd backend
-fly launch --name manefo-backend --region nrt  # 東京リージョン
-```
-
-### 3. シークレットを設定
-
-```bash
-fly secrets set \
-  SUPABASE_URL="https://xxxx.supabase.co" \
-  SUPABASE_SERVICE_ROLE_KEY="eyJ..." \
-  ENCRYPTION_KEY="<32バイトのランダム文字列>" \
-  CORS_ORIGIN="https://manefo.vercel.app"
-```
+1. Supabase ダッシュボードで新プロジェクト作成
+2. SQL Editor で `db/schema.sql` を実行
+3. Authentication → URL Configuration に Vercel の URL を追加
+   例: `https://manefo.vercel.app`
+4. (オプション) Authentication → Providers → Google を有効化
 
 ### 4. デプロイ
 
 ```bash
-fly deploy
+git push origin main  # GitHub連携済みなら自動CD
+# または
+vercel --prod
 ```
+
+---
 
 ## 環境変数一覧
 
 `.env.example` を参照。
 
----
-
 ## セキュリティ方針
 
-- 口座認証情報は **Supabase Vault** または **AES-256-GCM** で暗号化保存
-- 金融機関トークン・パスワードは絶対にクライアントに露出しない
-- 全API呼び出しはSupabase JWTによる認証必須
-- RLSポリシーにより、ユーザーは自分のデータのみ参照可能
+- 口座認証情報は **AES-256-GCM** で暗号化後にSupabaseへ保存
+- `SUPABASE_SERVICE_ROLE_KEY` はAPIルート（サーバー）のみ使用。クライアントには絶対に露出しない
+- 全テーブルに **RLS（Row Level Security）** を適用。ユーザーは自分のデータのみ参照可能
+- `account_credentials` テーブルはfrontendのAnonキーからは一切読み取り不可（service_roleのみ）
 - 全操作は `audit_logs` テーブルに記録
+- CSP・X-Frame-Optionsなどセキュリティヘッダーを `next.config.ts` で設定済み
 
 ## ライセンス
 
